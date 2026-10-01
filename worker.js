@@ -12,9 +12,9 @@ input:focus{border-color:var(--acc)}button{padding:0 20px;border:0;border-radius
 .body{padding:16px 18px}.site{display:flex;align-items:center;gap:8px;color:var(--mut);font-size:13px;margin-bottom:8px}.site img{width:16px;height:16px;border-radius:3px}
 .title{font-size:19px;font-weight:700;line-height:1.3;margin:0 0 8px}.desc{color:#c3c8d6;font-size:14px;line-height:1.5;margin:0 0 12px;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
 .meta{color:var(--mut);font-size:13px;margin-bottom:12px}a.open{color:var(--acc);text-decoration:none;font-weight:600;font-size:14px;word-break:break-all}
-.err{color:#ff8a8a;background:#2a1717;border:1px solid #4a2525;padding:12px 14px;border-radius:12px}.sk{height:260px;border-radius:16px;background:linear-gradient(90deg,var(--card),#20242f,var(--card));background-size:200% 100%;animation:s 1.2s infinite}@keyframes s{to{background-position:-200% 0}}
+.player{margin-top:20px;background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden}.player h2{font-size:17px;margin:16px 18px}.video{aspect-ratio:16/9;min-height:200px;background:#000}.video iframe{display:block;width:100%;height:100%;min-height:200px;border:0}.player p{color:var(--mut);font-size:13px;line-height:1.5;margin:14px 18px}.err{color:#ff8a8a;background:#2a1717;border:1px solid #4a2525;padding:12px 14px;border-radius:12px}.sk{height:260px;border-radius:16px;background:linear-gradient(90deg,var(--card),#20242f,var(--card));background-size:200% 100%;animation:s 1.2s infinite}@keyframes s{to{background-position:-200% 0}}
 </style></head><body><main>
-<h1>Link Preview</h1><p class="sub">Paste any link to see its thumbnail, title and details.</p>
+<h1>Link Preview</h1><p class="sub">Paste a link for its details. YouTube videos can play here too.</p>
 <form id="f"><input id="u" type="text" inputmode="url" placeholder="https://..." autocomplete="off" autofocus><button id="b">Preview</button></form>
 <div id="out"></div></main>
 <script>
@@ -30,7 +30,8 @@ async function go(v){
     out.innerHTML='<div class="card">'+(d.image?'<img class="hero" src="'+esc(d.image)+'" alt="" referrerpolicy="no-referrer" onerror="this.remove()">':'')+
     '<div class="body"><div class="site">'+(d.favicon?'<img src="'+esc(d.favicon)+'" alt="" referrerpolicy="no-referrer" onerror="this.remove()">':'')+'<span>'+esc(d.siteName||d.host)+'</span></div>'+
     '<h2 class="title">'+esc(d.title||d.host)+'</h2>'+(d.description?'<p class="desc">'+esc(d.description)+'</p>':'')+
-    (d.author?'<div class="meta">By '+esc(d.author)+'</div>':'')+'<a class="open" href="'+esc(d.url)+'" target="_blank" rel="noopener">'+esc(d.url)+'</a></div></div>';
+    (d.author?'<div class="meta">By '+esc(d.author)+'</div>':'')+'<a class="open" href="'+esc(d.url)+'" target="_blank" rel="noopener">'+esc(d.url)+'</a></div></div>'+
+    (d.youtubeId&&/^[A-Za-z0-9_-]{11}$/.test(d.youtubeId)?'<section class="player"><h2>Video preview</h2><div class="video"><iframe src="https://www.youtube-nocookie.com/embed/'+d.youtubeId+'?playsinline=1" title="'+esc(d.title||'YouTube video')+'" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div><p>Plays directly from YouTube. If the owner has disabled embedding, use the link above to watch on YouTube.</p></section>':'');
   }catch(e){out.innerHTML='<div class="err">'+esc(e.message)+'</div>'}
   b.disabled=false;
 }
@@ -52,8 +53,8 @@ async function preview(raw){
   let u;try{u=new URL(raw)}catch{return[{error:'That does not look like a valid link.'},400]}
   if(!/^https?:$/.test(u.protocol)||badHost(u.hostname))return[{error:'Only public http(s) links are supported.'},400];
   const host=u.hostname.replace(/^www\./,'');const out={url:u.href,host,favicon:'https://www.google.com/s2/favicons?domain='+u.hostname+'&sz=64'};
-  const id=ytId(u);
-  if(id){out.siteName='YouTube';out.image='https://i.ytimg.com/vi/'+id+'/hqdefault.jpg';
+  const candidate=ytId(u);const id=candidate&&/^[A-Za-z0-9_-]{11}$/.test(candidate)?candidate:null;
+  if(id){out.youtubeId=id;out.siteName='YouTube';out.image='https://i.ytimg.com/vi/'+id+'/hqdefault.jpg';
     try{const r=await fetch('https://www.youtube.com/oembed?format=json&url='+encodeURIComponent('https://www.youtube.com/watch?v='+id));
       if(r.ok){const d=await r.json();out.title=d.title;out.author=d.author_name;out.description='Video by '+d.author_name+' on YouTube'}
       else if(r.status===401||r.status===403||r.status===404){return[{error:'That YouTube video is unavailable or private.'},404]}}catch{}
